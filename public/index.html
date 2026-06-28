@@ -649,6 +649,66 @@
     }
   }
 
+  async function handleUrl() {
+    const url = document.getElementById('urlInput').value.trim();
+    if (!url) return;
+
+    hideError();
+    setProgress(5, 'Validando URL...');
+    document.getElementById('progressCard').style.display = 'block';
+    document.getElementById('resultCard').style.display = 'none';
+    document.getElementById('transcribeBtn').disabled = true;
+
+    const opts = Array.from(selectedOpts);
+    const lang = document.getElementById('langSel').value;
+    const spk = document.getElementById('speakerSel').value;
+
+    let stepIdx = 0;
+    const steps = [
+      [20, 'Descargando audio del video...'],
+      [45, 'Extrayendo audio...'],
+      [65, 'Transcribiendo con Whisper...'],
+      [85, 'Procesando con IA...'],
+    ];
+    const ticker = setInterval(() => {
+      if (stepIdx < steps.length) {
+        const [p, msg] = steps[stepIdx++];
+        setProgress(p, msg);
+      }
+    }, 3000);
+
+    try {
+      const resp = await fetch('/api/transcribe-url', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url, outputTypes: opts, language: lang, speakers: spk })
+      });
+
+      clearInterval(ticker);
+
+      if (!resp.ok) {
+        const err = await resp.json().catch(() => ({ error: 'Error del servidor' }));
+        throw new Error(err.error || 'Error ' + resp.status);
+      }
+
+      const data = await resp.json();
+      setProgress(100, 'Listo');
+      document.getElementById('urlInput').value = '';
+      setTimeout(() => {
+        document.getElementById('progressCard').style.display = 'none';
+        showResult(data.result, data.words);
+        document.getElementById('transcribeBtn').disabled = false;
+      }, 500);
+
+    } catch (err) {
+      clearInterval(ticker);
+      document.getElementById('progressCard').style.display = 'none';
+      document.getElementById('transcribeBtn').disabled = false;
+      showError(err.message || 'Error al procesar la URL.');
+    }
+  }
+
+
   function onUrlInput() {
     const url = document.getElementById('urlInput').value.trim();
     const hasFile = currentFile !== null;
