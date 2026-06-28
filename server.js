@@ -67,32 +67,40 @@ function isSocialUrl(url) {
 }
 
 // ── Helper: instalar yt-dlp si no está ────────────────────────
+const YT_DLP_PATH = path.join(__dirname, "yt-dlp");
+
 function ensureYtDlp() {
-  try {
-    execSync("yt-dlp --version", { stdio: "ignore" });
-    return true;
-  } catch {
-    try {
-      console.log("Instalando yt-dlp...");
-      execSync("pip install yt-dlp", { stdio: "inherit" });
-      return true;
-    } catch {
-      try {
-        execSync("pip3 install yt-dlp", { stdio: "inherit" });
-        return true;
-      } catch {
-        return false;
-      }
-    }
+  // 1. Ya está en PATH
+  try { execSync("yt-dlp --version", { stdio: "ignore" }); return true; } catch {}
+  // 2. Ya lo descargamos antes
+  if (fs.existsSync(YT_DLP_PATH)) {
+    try { execSync(`${YT_DLP_PATH} --version`, { stdio: "ignore" }); return true; } catch {}
   }
+  // 3. Descargar binario de GitHub
+  try {
+    console.log("Descargando yt-dlp...");
+    execSync(
+      `curl -L https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp -o "${YT_DLP_PATH}" && chmod +x "${YT_DLP_PATH}"`,
+      { stdio: "inherit", timeout: 60000 }
+    );
+    return true;
+  } catch {}
+  // 4. pip como último recurso
+  try { execSync("pip install yt-dlp", { stdio: "ignore" }); return true; } catch {}
+  try { execSync("pip3 install yt-dlp", { stdio: "ignore" }); return true; } catch {}
+  return false;
 }
 
 // ── Helper: descargar audio de URL ────────────────────────────
 function downloadAudio(url, outputPath) {
   return new Promise((resolve, reject) => {
-    const cmd = `yt-dlp -x --audio-format mp3 --audio-quality 5 --no-playlist -o "${outputPath}" "${url}"`;
-    exec(cmd, { timeout: 120000 }, (err, stdout, stderr) => {
-      if (err) return reject(new Error("No se pudo descargar el audio. Verifica que la URL sea válida y pública."));
+    const bin = fs.existsSync(YT_DLP_PATH) ? YT_DLP_PATH : "yt-dlp";
+    const cmd = `"${bin}" -x --audio-format mp3 --audio-quality 5 --no-playlist -o "${outputPath}" "${url}"`;
+    exec(cmd, { timeout: 180000 }, (err, stdout, stderr) => {
+      if (err) {
+        console.error("yt-dlp error:", stderr);
+        return reject(new Error("No se pudo descargar el audio. Verifica que la URL sea válida y pública."));
+      }
       resolve(outputPath);
     });
   });
