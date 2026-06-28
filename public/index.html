@@ -1,0 +1,653 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Transcriptor IA</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.4.0/dist/tabler-icons.min.css" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --blue:       #2563eb;
+      --blue-light: #eff6ff;
+      --blue-mid:   #bfdbfe;
+      --blue-dark:  #1d4ed8;
+      --text:       #111827;
+      --text-sec:   #4b5563;
+      --text-muted: #9ca3af;
+      --surface:    #f9fafb;
+      --surface-2:  #ffffff;
+      --border:     #e5e7eb;
+      --border-str: #d1d5db;
+      --radius:     8px;
+      --danger:     #dc2626;
+      --success:    #16a34a;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: #f3f4f6;
+      color: var(--text);
+      min-height: 100vh;
+    }
+
+    /* ── Header ─────────────────────────────────────── */
+    header {
+      background: var(--surface-2);
+      border-bottom: 1px solid var(--border);
+      padding: 0 2rem;
+      display: flex;
+      align-items: center;
+      height: 56px;
+      gap: 10px;
+    }
+    header .logo {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 16px;
+      font-weight: 700;
+      color: var(--text);
+    }
+    header .logo i { font-size: 22px; color: var(--blue); }
+    header .logo span { color: var(--blue); }
+    header nav { margin-left: auto; display: flex; gap: 6px; }
+    header nav a {
+      font-size: 13px;
+      color: var(--text-sec);
+      text-decoration: none;
+      padding: 6px 12px;
+      border-radius: var(--radius);
+      transition: background 0.15s;
+    }
+    header nav a:hover { background: var(--surface); }
+
+    /* ── Layout ─────────────────────────────────────── */
+    .page { max-width: 860px; margin: 0 auto; padding: 2.5rem 1.5rem 4rem; }
+
+    /* ── Hero ───────────────────────────────────────── */
+    .hero { text-align: center; margin-bottom: 2.5rem; }
+    .badge {
+      display: inline-flex; align-items: center; gap: 6px;
+      font-size: 12px; font-weight: 500;
+      color: var(--blue); background: var(--blue-light);
+      border: 1px solid var(--blue-mid);
+      border-radius: 20px; padding: 4px 12px;
+      margin-bottom: 1rem;
+    }
+    .badge::before {
+      content: ''; width: 6px; height: 6px;
+      border-radius: 50%; background: var(--blue);
+    }
+    .hero h1 { font-size: 2.4rem; font-weight: 800; line-height: 1.2; margin-bottom: 0.8rem; }
+    .hero h1 span { color: var(--blue); }
+    .hero p { font-size: 1rem; color: var(--text-sec); max-width: 520px; margin: 0 auto; line-height: 1.65; }
+
+    /* ── Card ───────────────────────────────────────── */
+    .card {
+      background: var(--surface-2);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 1.5rem;
+      margin-bottom: 1.25rem;
+    }
+    .card-title {
+      font-size: 13px; font-weight: 600;
+      color: var(--text-sec); letter-spacing: 0.05em;
+      text-transform: uppercase; margin-bottom: 1rem;
+    }
+
+    /* ── Upload zone ────────────────────────────────── */
+    .upload-zone {
+      border: 2px dashed var(--blue-mid);
+      border-radius: 12px;
+      background: var(--blue-light);
+      padding: 2.5rem 2rem;
+      text-align: center;
+      cursor: pointer;
+      position: relative;
+      transition: all 0.2s;
+    }
+    .upload-zone:hover, .upload-zone.drag-over {
+      border-color: var(--blue);
+      background: #dbeafe;
+    }
+    .upload-zone input[type=file] {
+      position: absolute; inset: 0; opacity: 0;
+      cursor: pointer; width: 100%; height: 100%;
+    }
+    .upload-zone .icon { font-size: 40px; color: var(--blue); margin-bottom: 10px; }
+    .upload-zone .title { font-size: 15px; font-weight: 600; color: var(--blue); margin-bottom: 4px; }
+    .upload-zone .sub { font-size: 13px; color: var(--text-sec); }
+    .upload-zone .limit { font-size: 12px; color: var(--text-muted); margin-top: 6px; }
+
+    /* ── URL input ──────────────────────────────────── */
+    .url-row { display: flex; gap: 8px; margin-top: 1rem; }
+    .url-row input {
+      flex: 1; padding: 10px 14px;
+      border: 1px solid var(--border-str);
+      border-radius: var(--radius);
+      font-size: 14px; color: var(--text);
+      outline: none; background: var(--surface);
+      transition: border-color 0.15s;
+    }
+    .url-row input:focus { border-color: var(--blue); }
+    .url-row input::placeholder { color: var(--text-muted); }
+
+    /* ── File list ──────────────────────────────────── */
+    .file-list { display: flex; flex-direction: column; gap: 8px; }
+    .file-item {
+      display: flex; align-items: center; gap: 10px;
+      padding: 10px 14px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      font-size: 13px;
+    }
+    .file-item i.type-icon { font-size: 20px; color: var(--blue); flex-shrink: 0; }
+    .file-name { flex: 1; font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .file-size { color: var(--text-muted); flex-shrink: 0; }
+    .file-remove { cursor: pointer; color: var(--text-muted); font-size: 18px; flex-shrink: 0; transition: color 0.15s; }
+    .file-remove:hover { color: var(--danger); }
+
+    /* ── Options grid ───────────────────────────────── */
+    .opt-grid { display: flex; flex-wrap: wrap; gap: 8px; }
+    .opt-chip {
+      display: flex; align-items: center; gap: 6px;
+      padding: 8px 14px;
+      border: 1px solid var(--border-str);
+      border-radius: 20px;
+      font-size: 13px; font-weight: 500;
+      cursor: pointer;
+      background: var(--surface);
+      color: var(--text-sec);
+      transition: all 0.15s;
+      user-select: none;
+    }
+    .opt-chip i { font-size: 15px; }
+    .opt-chip:hover { border-color: var(--blue); color: var(--blue); }
+    .opt-chip.active {
+      background: var(--blue-light);
+      border-color: var(--blue);
+      color: var(--blue);
+    }
+    .opt-chip.active i { color: var(--blue); }
+
+    /* ── Selects row ────────────────────────────────── */
+    .selects-row { display: flex; gap: 1rem; flex-wrap: wrap; }
+    .select-group { display: flex; flex-direction: column; gap: 5px; flex: 1; min-width: 160px; }
+    .select-group label { font-size: 12px; font-weight: 600; color: var(--text-sec); text-transform: uppercase; letter-spacing: 0.05em; }
+    .select-group select {
+      padding: 9px 12px;
+      border: 1px solid var(--border-str);
+      border-radius: var(--radius);
+      font-size: 14px;
+      color: var(--text);
+      background: var(--surface);
+      outline: none;
+      cursor: pointer;
+      transition: border-color 0.15s;
+    }
+    .select-group select:focus { border-color: var(--blue); }
+
+    /* ── Buttons ────────────────────────────────────── */
+    .btn-primary {
+      display: flex; align-items: center; justify-content: center; gap: 8px;
+      width: 100%; padding: 14px;
+      background: var(--blue); color: white;
+      border: none; border-radius: var(--radius);
+      font-size: 15px; font-weight: 600;
+      cursor: pointer;
+      transition: background 0.15s, transform 0.1s;
+      margin-bottom: 1.25rem;
+    }
+    .btn-primary:hover:not(:disabled) { background: var(--blue-dark); }
+    .btn-primary:active:not(:disabled) { transform: scale(0.99); }
+    .btn-primary:disabled { background: #93c5fd; cursor: not-allowed; }
+    .btn-primary i { font-size: 18px; }
+
+    .btn-sm {
+      display: inline-flex; align-items: center; gap: 5px;
+      padding: 6px 12px;
+      background: transparent;
+      border: 1px solid var(--border-str);
+      border-radius: var(--radius);
+      font-size: 12px; font-weight: 500;
+      color: var(--text-sec);
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+    .btn-sm:hover { background: var(--surface); color: var(--text); }
+    .btn-sm i { font-size: 13px; }
+    .btn-sm.danger:hover { border-color: var(--danger); color: var(--danger); }
+
+    /* ── Progress ───────────────────────────────────── */
+    #progressCard { display: none; }
+    .progress-bar {
+      height: 6px; background: var(--border);
+      border-radius: 3px; overflow: hidden; margin-bottom: 10px;
+    }
+    .progress-fill {
+      height: 100%; background: var(--blue);
+      border-radius: 3px; width: 0%;
+      transition: width 0.5s ease;
+    }
+    .progress-label {
+      display: flex; align-items: center; justify-content: space-between;
+      font-size: 13px; color: var(--text-sec);
+    }
+    .progress-label .step { display: flex; align-items: center; gap: 8px; }
+    .spinner {
+      width: 14px; height: 14px;
+      border: 2px solid var(--border-str);
+      border-top-color: var(--blue);
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ── Result ─────────────────────────────────────── */
+    #resultCard { display: none; }
+    .result-header {
+      display: flex; align-items: center;
+      justify-content: space-between;
+      margin-bottom: 1rem;
+      flex-wrap: wrap; gap: 8px;
+    }
+    .result-title { font-size: 14px; font-weight: 600; color: var(--text); display: flex; align-items: center; gap: 8px; }
+    .result-title i { font-size: 16px; color: var(--blue); }
+    .result-actions { display: flex; gap: 6px; flex-wrap: wrap; }
+    .result-text {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 16px;
+      font-size: 14px; line-height: 1.75;
+      white-space: pre-wrap;
+      min-height: 120px; max-height: 500px;
+      overflow-y: auto;
+      color: var(--text);
+      font-family: Georgia, serif;
+    }
+    .result-footer {
+      display: flex; align-items: center; justify-content: space-between;
+      margin-top: 10px; font-size: 12px; color: var(--text-muted);
+    }
+
+    /* ── Error banner ───────────────────────────────── */
+    .error-banner {
+      display: none; align-items: flex-start; gap: 10px;
+      padding: 12px 16px;
+      background: #fef2f2; border: 1px solid #fecaca;
+      border-radius: var(--radius); font-size: 13px;
+      color: var(--danger); margin-bottom: 1rem;
+    }
+    .error-banner.show { display: flex; }
+    .error-banner i { font-size: 18px; flex-shrink: 0; margin-top: 1px; }
+
+    /* ── Toast ──────────────────────────────────────── */
+    .toast {
+      position: fixed; bottom: 24px; right: 24px;
+      background: #111; color: white;
+      padding: 10px 18px; border-radius: var(--radius);
+      font-size: 13px; font-weight: 500;
+      opacity: 0; transition: opacity 0.25s;
+      pointer-events: none; z-index: 999;
+      display: flex; align-items: center; gap: 8px;
+    }
+    .toast.show { opacity: 1; }
+    .toast i { font-size: 15px; color: #4ade80; }
+
+    /* ── Footer ─────────────────────────────────────── */
+    footer {
+      text-align: center; margin-top: 3rem;
+      font-size: 12px; color: var(--text-muted);
+    }
+    footer a { color: var(--blue); text-decoration: none; }
+
+    @media (max-width: 600px) {
+      .hero h1 { font-size: 1.8rem; }
+      .page { padding: 1.5rem 1rem 3rem; }
+      .selects-row { flex-direction: column; }
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="logo">
+    <i class="ti ti-wand"></i>
+    Transcriptor<span>IA</span>
+  </div>
+  <nav>
+    <a href="#" onclick="checkHealth()">
+      <i class="ti ti-activity" style="vertical-align:-2px;margin-right:3px;"></i>Estado
+    </a>
+  </nav>
+</header>
+
+<div class="page">
+
+  <!-- Hero -->
+  <div class="hero">
+    <div class="badge">Transcripción con IA · OpenAI Whisper</div>
+    <h1>Transcribe todo y <span>reutilízalo</span></h1>
+    <p>Sube videos o audios y obtén transcripciones, resúmenes, subtítulos SRT, puntos clave o posts de blog generados con IA.</p>
+  </div>
+
+  <!-- Error banner -->
+  <div class="error-banner" id="errorBanner">
+    <i class="ti ti-alert-circle"></i>
+    <span id="errorMsg">Error</span>
+  </div>
+
+  <!-- Upload card -->
+  <div class="card">
+    <div class="card-title"><i class="ti ti-upload" style="vertical-align:-2px;margin-right:5px;"></i>Archivo multimedia</div>
+
+    <div class="upload-zone" id="dropZone">
+      <input type="file" id="fileInput" accept="video/*,audio/*,.mp3,.mp4,.wav,.m4a,.webm,.ogg,.flac" />
+      <div class="icon"><i class="ti ti-cloud-upload"></i></div>
+      <div class="title">Arrastra y suelta o haz clic para elegir</div>
+      <div class="sub">MP3, MP4, WAV, M4A, WebM, OGG, FLAC, MOV</div>
+      <div class="limit">Máximo 25 MB · Un archivo por transcripción</div>
+    </div>
+
+    <div class="url-row">
+      <input type="text" id="urlInput" placeholder="Próximamente: pega un enlace de YouTube, TikTok, Instagram..." disabled />
+    </div>
+
+    <div id="fileList" class="file-list" style="margin-top:1rem;"></div>
+  </div>
+
+  <!-- Options card -->
+  <div class="card">
+    <div class="card-title"><i class="ti ti-sliders" style="vertical-align:-2px;margin-right:5px;"></i>Opciones de salida</div>
+
+    <div class="opt-grid" id="outputOpts">
+      <div class="opt-chip active" data-val="transcripcion" onclick="toggleOpt(this)">
+        <i class="ti ti-file-text"></i> Transcripción
+      </div>
+      <div class="opt-chip" data-val="resumen" onclick="toggleOpt(this)">
+        <i class="ti ti-list-details"></i> Resumen
+      </div>
+      <div class="opt-chip" data-val="subtitulos" onclick="toggleOpt(this)">
+        <i class="ti ti-subtask"></i> Subtítulos SRT
+      </div>
+      <div class="opt-chip" data-val="puntos_clave" onclick="toggleOpt(this)">
+        <i class="ti ti-checkbox"></i> Puntos clave
+      </div>
+      <div class="opt-chip" data-val="blog" onclick="toggleOpt(this)">
+        <i class="ti ti-pencil"></i> Post de blog
+      </div>
+    </div>
+
+    <div class="selects-row" style="margin-top:1.25rem;">
+      <div class="select-group">
+        <label><i class="ti ti-language" style="vertical-align:-2px;"></i> Idioma de salida</label>
+        <select id="langSel">
+          <option value="español">Español</option>
+          <option value="inglés">Inglés</option>
+          <option value="portugués">Portugués</option>
+          <option value="francés">Francés</option>
+          <option value="alemán">Alemán</option>
+        </select>
+      </div>
+      <div class="select-group">
+        <label><i class="ti ti-users" style="vertical-align:-2px;"></i> Número de hablantes</label>
+        <select id="speakerSel">
+          <option value="1">1 persona</option>
+          <option value="2">2 personas</option>
+          <option value="varios">Varios</option>
+        </select>
+      </div>
+    </div>
+  </div>
+
+  <!-- Transcribe button -->
+  <button class="btn-primary" id="transcribeBtn" onclick="startTranscription()" disabled>
+    <i class="ti ti-wand"></i>
+    Transcribir con IA
+  </button>
+
+  <!-- Progress card -->
+  <div class="card" id="progressCard">
+    <div class="progress-bar"><div class="progress-fill" id="progressFill"></div></div>
+    <div class="progress-label">
+      <div class="step"><div class="spinner"></div><span id="statusText">Procesando...</span></div>
+      <span id="progressPct">0%</span>
+    </div>
+  </div>
+
+  <!-- Result card -->
+  <div class="card" id="resultCard">
+    <div class="result-header">
+      <div class="result-title"><i class="ti ti-file-check"></i><span id="resultLabel">Resultado</span></div>
+      <div class="result-actions">
+        <button class="btn-sm" onclick="copyResult()"><i class="ti ti-copy"></i> Copiar</button>
+        <button class="btn-sm" onclick="downloadTxt()"><i class="ti ti-download"></i> .txt</button>
+        <button class="btn-sm" onclick="downloadSrt()" id="srtBtn" style="display:none;"><i class="ti ti-download"></i> .srt</button>
+        <button class="btn-sm danger" onclick="resetApp()"><i class="ti ti-refresh"></i> Nueva</button>
+      </div>
+    </div>
+    <div class="result-text" id="resultText"></div>
+    <div class="result-footer">
+      <span id="resultMeta"></span>
+      <span id="wordCount"></span>
+    </div>
+  </div>
+
+  <footer>
+    Motor de transcripción: <a href="https://openai.com/research/whisper" target="_blank">OpenAI Whisper</a>
+    · Post-procesamiento: GPT-4o mini
+    · Backend: Node.js + Express
+  </footer>
+</div>
+
+<div class="toast" id="toast"><i class="ti ti-check"></i><span id="toastMsg"></span></div>
+
+<script>
+  // ── State ──────────────────────────────────────────────────
+  let currentFile = null;
+  let selectedOpts = new Set(['transcripcion']);
+  let resultContent = '';
+  let isSrt = false;
+
+  // ── File drop ──────────────────────────────────────────────
+  const dropZone = document.getElementById('dropZone');
+  const fileInput = document.getElementById('fileInput');
+
+  dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('drag-over'); });
+  dropZone.addEventListener('dragleave', () => dropZone.classList.remove('drag-over'));
+  dropZone.addEventListener('drop', e => {
+    e.preventDefault(); dropZone.classList.remove('drag-over');
+    const f = e.dataTransfer.files[0];
+    if (f) setFile(f);
+  });
+  fileInput.addEventListener('change', e => { if (e.target.files[0]) setFile(e.target.files[0]); });
+
+  function setFile(f) {
+    currentFile = f;
+    renderFileList();
+    hideError();
+  }
+
+  function renderFileList() {
+    const list = document.getElementById('fileList');
+    if (!currentFile) { list.innerHTML = ''; document.getElementById('transcribeBtn').disabled = true; return; }
+    const size = currentFile.size > 1048576
+      ? (currentFile.size / 1048576).toFixed(1) + ' MB'
+      : Math.round(currentFile.size / 1024) + ' KB';
+    const isVideo = currentFile.type.startsWith('video');
+    list.innerHTML = `
+      <div class="file-item">
+        <i class="ti ti-${isVideo ? 'video' : 'music'} type-icon"></i>
+        <div class="file-name" title="${currentFile.name}">${currentFile.name}</div>
+        <div class="file-size">${size}</div>
+        <i class="ti ti-x file-remove" onclick="removeFile()" title="Quitar"></i>
+      </div>`;
+    document.getElementById('transcribeBtn').disabled = false;
+  }
+
+  function removeFile() {
+    currentFile = null; fileInput.value = '';
+    renderFileList();
+  }
+
+  // ── Output options ─────────────────────────────────────────
+  function toggleOpt(el) {
+    const val = el.dataset.val;
+    if (el.classList.contains('active')) {
+      if (selectedOpts.size > 1) { el.classList.remove('active'); selectedOpts.delete(val); }
+    } else { el.classList.add('active'); selectedOpts.add(val); }
+  }
+
+  // ── Transcription ──────────────────────────────────────────
+  async function startTranscription() {
+    if (!currentFile) return;
+
+    hideError();
+    setProgress(5, 'Preparando archivo...');
+    document.getElementById('progressCard').style.display = 'block';
+    document.getElementById('resultCard').style.display = 'none';
+    document.getElementById('transcribeBtn').disabled = true;
+
+    const formData = new FormData();
+    formData.append('file', currentFile, currentFile.name);
+    formData.append('outputTypes', JSON.stringify(Array.from(selectedOpts)));
+    formData.append('language', document.getElementById('langSel').value);
+    formData.append('speakers', document.getElementById('speakerSel').value);
+
+    // Simular progreso visual mientras espera la API
+    let pct = 10;
+    const steps = [
+      [15, 'Enviando al servidor...'],
+      [30, 'Transcribiendo con Whisper...'],
+      [65, 'Procesando con IA...'],
+      [85, 'Generando resultado...'],
+    ];
+    let stepIdx = 0;
+    const ticker = setInterval(() => {
+      if (stepIdx < steps.length) {
+        const [p, msg] = steps[stepIdx++];
+        setProgress(p, msg);
+      }
+    }, 1800);
+
+    try {
+      const resp = await fetch('/api/transcribe', { method: 'POST', body: formData });
+      clearInterval(ticker);
+
+      if (!resp.ok) {
+        const err = await resp.json().catch(() => ({ error: 'Error del servidor' }));
+        throw new Error(err.error || `Error ${resp.status}`);
+      }
+
+      const data = await resp.json();
+      setProgress(100, 'Listo');
+      setTimeout(() => {
+        document.getElementById('progressCard').style.display = 'none';
+        showResult(data.result, data.words);
+        document.getElementById('transcribeBtn').disabled = false;
+      }, 500);
+
+    } catch (err) {
+      clearInterval(ticker);
+      document.getElementById('progressCard').style.display = 'none';
+      document.getElementById('transcribeBtn').disabled = false;
+      showError(err.message || 'Error inesperado. Revisa la consola del servidor.');
+    }
+  }
+
+  function setProgress(pct, msg) {
+    document.getElementById('progressFill').style.width = pct + '%';
+    document.getElementById('statusText').textContent = msg;
+    document.getElementById('progressPct').textContent = pct + '%';
+  }
+
+  // ── Result display ─────────────────────────────────────────
+  function showResult(text, words) {
+    resultContent = text;
+    isSrt = selectedOpts.has('subtitulos') && selectedOpts.size === 1;
+
+    const labelMap = {
+      transcripcion: 'Transcripción', resumen: 'Resumen',
+      subtitulos: 'Subtítulos SRT', puntos_clave: 'Puntos clave', blog: 'Post de blog'
+    };
+    const label = Array.from(selectedOpts).map(o => labelMap[o]).join(' + ');
+    document.getElementById('resultLabel').textContent = label;
+    document.getElementById('resultText').textContent = text;
+
+    const w = words || text.split(/\s+/).length;
+    const mins = Math.ceil(w / 130);
+    document.getElementById('wordCount').textContent = `${w.toLocaleString()} palabras`;
+    document.getElementById('resultMeta').textContent = `~${mins} min de lectura`;
+    document.getElementById('srtBtn').style.display = isSrt ? 'inline-flex' : 'none';
+
+    document.getElementById('resultCard').style.display = 'block';
+    document.getElementById('resultCard').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+
+  // ── Actions ────────────────────────────────────────────────
+  function copyResult() {
+    navigator.clipboard.writeText(resultContent)
+      .then(() => showToast('Copiado al portapapeles'))
+      .catch(() => showToast('No se pudo copiar'));
+  }
+
+  function downloadTxt() {
+    const blob = new Blob([resultContent], { type: 'text/plain;charset=utf-8' });
+    downloadBlob(blob, 'transcripcion.txt');
+    showToast('Descargando transcripcion.txt');
+  }
+
+  function downloadSrt() {
+    const blob = new Blob([resultContent], { type: 'text/plain;charset=utf-8' });
+    downloadBlob(blob, 'subtitulos.srt');
+    showToast('Descargando subtitulos.srt');
+  }
+
+  function downloadBlob(blob, name) {
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = name; a.click();
+    URL.revokeObjectURL(a.href);
+  }
+
+  function resetApp() {
+    removeFile();
+    document.getElementById('resultCard').style.display = 'none';
+    resultContent = ''; isSrt = false;
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+
+  // ── Error / Toast ──────────────────────────────────────────
+  function showError(msg) {
+    const b = document.getElementById('errorBanner');
+    document.getElementById('errorMsg').textContent = msg;
+    b.classList.add('show');
+    b.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  }
+  function hideError() { document.getElementById('errorBanner').classList.remove('show'); }
+
+  function showToast(msg, dur = 2500) {
+    document.getElementById('toastMsg').textContent = msg;
+    const t = document.getElementById('toast');
+    t.classList.add('show');
+    setTimeout(() => t.classList.remove('show'), dur);
+  }
+
+  // ── Health check ───────────────────────────────────────────
+  async function checkHealth() {
+    try {
+      const r = await fetch('/api/health');
+      const d = await r.json();
+      showToast(d.openai ? '✅ Servidor OK · API Key configurada' : '⚠️ Falta API Key de OpenAI en .env', 4000);
+    } catch {
+      showToast('❌ Servidor no disponible. ¿Está corriendo node server.js?', 4000);
+    }
+  }
+</script>
+</body>
+</html>
