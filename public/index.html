@@ -355,7 +355,7 @@
     </div>
 
     <div class="url-row">
-      <input type="text" id="urlInput" placeholder="Pega un enlace de YouTube, TikTok, Instagram, X, Facebook..." onkeydown="if(event.key==='Enter') handleUrl()" />
+      <input type="text" id="urlInput" placeholder="Pega un enlace de YouTube, TikTok, Instagram, X, Facebook..." onkeydown="if(event.key==='Enter') triggerTranscribe()" oninput="onUrlInput()" />
     </div>
 
     <div id="fileList" class="file-list" style="margin-top:1rem;"></div>
@@ -406,7 +406,7 @@
   </div>
 
   <!-- Transcribe button -->
-  <button class="btn-primary" id="transcribeBtn" onclick="startTranscription()" disabled>
+  <button class="btn-primary" id="transcribeBtn" onclick="triggerTranscribe()" disabled>
     <i class="ti ti-wand"></i>
     Transcribir con IA
   </button>
@@ -648,6 +648,22 @@
       showToast('❌ Servidor no disponible. ¿Está corriendo node server.js?', 4000);
     }
   }
+
+  function onUrlInput() {
+    const url = document.getElementById('urlInput').value.trim();
+    const hasFile = currentFile !== null;
+    document.getElementById('transcribeBtn').disabled = !url && !hasFile;
+  }
+
+  function triggerTranscribe() {
+    const url = document.getElementById('urlInput').value.trim();
+    if (url) {
+      handleUrl();
+    } else {
+      startTranscription();
+    }
+  }
+
 </script>
 </body>
 </html>
