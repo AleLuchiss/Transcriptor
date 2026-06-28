@@ -3,7 +3,8 @@
   "version": "1.0.0",
   "main": "server.js",
   "scripts": {
-    "start": "node server.js"
+    "start": "node server.js",
+    "postinstall": "pip install yt-dlp || pip3 install yt-dlp || true"
   },
   "dependencies": {
     "dotenv": "^16.4.5",
