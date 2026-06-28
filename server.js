@@ -1,6 +1,6 @@
 // =============================================
 //  server.js — Backend Transcriptor IA
-//  Stack: Node.js + Express + Groq + ytdl-core
+//  Stack: Node.js + Express + Groq + Innertube
 // =============================================
 
 require("dotenv").config();
@@ -63,23 +63,23 @@ function buildPostPrompt(transcript, opts, lang, speakers) {
   if (opts.includes("transcripcion")) parts.push("1. TRANSCRIPCIÓN COMPLETA:\n" + transcript);
   if (opts.includes("resumen")) parts.push("2. RESUMEN EJECUTIVO: Genera un resumen conciso en " + lang + ".");
   if (opts.includes("subtitulos")) parts.push("3. SUBTÍTULOS SRT: Formato SRT numerado estimando tiempos. Máximo 2 líneas por bloque.");
-  if (opts.includes("puntos_clave")) parts.push("4. PUNTOS CLAVE: Lista 5-10 takeaways en viñetas (•) en " + lang + ".");
+  if (opts.includes("puntos_clave")) parts.push("4. PUNTOS CLAVE: Lista 5-10 takeaways en viñetas en " + lang + ".");
   if (opts.includes("blog")) parts.push("5. POST DE BLOG: Artículo completo con título, introducción, desarrollo y conclusión en " + lang + ".");
 
   const speakerNote = speakers === "1" ? "Hay un solo hablante."
     : speakers === "2" ? "Puede haber 2 hablantes; diferéncialos con [Persona 1] y [Persona 2]."
     : "Pueden haber varios hablantes; identifícalos como [Hablante 1], [Hablante 2], etc.";
 
-  return "Eres un experto en procesamiento de transcripciones. " + speakerNote + "\nIdioma de salida: " + lang + ".\nProporciona EXACTAMENTE las secciones pedidas con el encabezado en mayúsculas:\n\n" + parts.join("\n\n");
+  return "Eres un experto en procesamiento de transcripciones. " + speakerNote +
+    "\nIdioma de salida: " + lang + ".\nProporciona EXACTAMENTE las secciones pedidas:\n\n" + parts.join("\n\n");
 }
 
 async function transcribeFile(filePath, lang) {
-  const audioStream = fs.createReadStream(filePath);
   const langCode = lang === "español" ? "es" : lang === "inglés" ? "en"
     : lang === "portugués" ? "pt" : lang === "francés" ? "fr"
     : lang === "alemán" ? "de" : undefined;
   const response = await groq.audio.transcriptions.create({
-    file: audioStream,
+    file: fs.createReadStream(filePath),
     model: "whisper-large-v3",
     language: langCode,
     response_format: "text",
@@ -87,19 +87,25 @@ async function transcribeFile(filePath, lang) {
   return response || "";
 }
 
-async function downloadYoutubeAudio(url, outputPath) {
-  const ytdl = require("@distube/ytdl-core");
+async function downloadAudio(url, outputPath) {
+  const { Innertube } = require("youtubei.js");
+  const yt = await Innertube.create({ cache: null, generate_session_locally: true });
+
+  // Extraer video ID de la URL
+  let videoId = url;
+  const match = url.match(/(?:v=|youtu\.be\/)([^&?/]+)/);
+  if (match) videoId = match[1];
+
+  const info = await yt.getInfo(videoId);
+  const format = info.chooseFormat({ type: "audio", quality: "best" });
+  const stream = await yt.download(videoId, { type: "audio", quality: "best", format: "any" });
+
   return new Promise((resolve, reject) => {
-    try {
-      const stream = ytdl(url, { filter: "audioonly", quality: "lowestaudio" });
-      const file = fs.createWriteStream(outputPath);
-      stream.pipe(file);
-      stream.on("error", (err) => reject(new Error("Error al descargar: " + err.message)));
-      file.on("finish", () => resolve(outputPath));
-      file.on("error", (err) => reject(err));
-    } catch (err) {
-      reject(new Error("No se pudo procesar la URL: " + err.message));
-    }
+    const file = fs.createWriteStream(outputPath);
+    stream.on("data", (chunk) => file.write(chunk));
+    stream.on("end", () => { file.end(); resolve(outputPath); });
+    stream.on("error", (err) => reject(new Error("Error descargando: " + err.message)));
+    file.on("error", (err) => reject(err));
   });
 }
 
@@ -119,12 +125,12 @@ app.post("/api/transcribe", upload.single("file"), async (req, res) => {
       cleanup(filePath);
       return res.json({ result: rawTranscript.trim(), words: rawTranscript.trim().split(/\s+/).length });
     }
-    const gptResponse = await groq.chat.completions.create({
+    const gpt = await groq.chat.completions.create({
       model: "llama-3.3-70b-versatile",
       messages: [{ role: "user", content: buildPostPrompt(rawTranscript, opts, lang, spk) }],
       max_tokens: 2000, temperature: 0.3,
     });
-    const processed = gptResponse.choices[0]?.message?.content || rawTranscript;
+    const processed = gpt.choices[0]?.message?.content || rawTranscript;
     cleanup(filePath);
     return res.json({ result: processed.trim(), rawTranscript: rawTranscript.trim(), words: processed.trim().split(/\s+/).length });
   } catch (err) {
@@ -136,7 +142,7 @@ app.post("/api/transcribe", upload.single("file"), async (req, res) => {
   }
 });
 
-// ── POST /api/transcribe-url — YouTube/TikTok/Instagram ───────
+// ── POST /api/transcribe-url — YouTube ────────────────────────
 app.post("/api/transcribe-url", async (req, res) => {
   const { url, outputTypes, language, speakers } = req.body;
   const audioPath = path.join(uploadsDir, "url-" + Date.now() + ".mp4");
@@ -148,21 +154,20 @@ app.post("/api/transcribe-url", async (req, res) => {
     const lang = language || "español";
     const spk = speakers || "1";
     console.log("[URL] Descargando:", url);
-    await downloadYoutubeAudio(url, audioPath);
+    await downloadAudio(url, audioPath);
     if (!fs.existsSync(audioPath)) return res.status(422).json({ error: "No se pudo extraer el audio." });
-    console.log("[URL] Transcribiendo...");
     const rawTranscript = await transcribeFile(audioPath, lang);
     if (!rawTranscript.trim()) { cleanup(audioPath); return res.status(422).json({ error: "No se detectó voz en el video." }); }
     if (opts.length === 1 && opts[0] === "transcripcion") {
       cleanup(audioPath);
       return res.json({ result: rawTranscript.trim(), words: rawTranscript.trim().split(/\s+/).length });
     }
-    const gptResponse = await groq.chat.completions.create({
+    const gpt = await groq.chat.completions.create({
       model: "llama-3.3-70b-versatile",
       messages: [{ role: "user", content: buildPostPrompt(rawTranscript, opts, lang, spk) }],
       max_tokens: 2000, temperature: 0.3,
     });
-    const processed = gptResponse.choices[0]?.message?.content || rawTranscript;
+    const processed = gpt.choices[0]?.message?.content || rawTranscript;
     cleanup(audioPath);
     return res.json({ result: processed.trim(), rawTranscript: rawTranscript.trim(), words: processed.trim().split(/\s+/).length });
   } catch (err) {
