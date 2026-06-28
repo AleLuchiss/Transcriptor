@@ -354,8 +354,19 @@
       <div class="limit">Máximo 25 MB · Un archivo por transcripción</div>
     </div>
 
-    <div class="url-row">
-      <input type="text" id="urlInput" placeholder="Pega un enlace de YouTube, TikTok, Instagram, X, Facebook..." onkeydown="if(event.key==='Enter') triggerTranscribe()" oninput="onUrlInput()" />
+    <div style="margin-top:1rem; background:#eff6ff; border:1px solid #bfdbfe; border-radius:8px; padding:12px 16px; display:flex; align-items:flex-start; gap:10px;">
+      <i class="ti ti-info-circle" style="font-size:18px; color:#2563eb; flex-shrink:0; margin-top:1px;" aria-hidden="true"></i>
+      <div>
+        <div style="font-size:13px; font-weight:600; color:#1d4ed8; margin-bottom:4px;">¿Tenés un video de YouTube, Instagram o TikTok?</div>
+        <div style="font-size:13px; color:#1d4ed8; line-height:1.6;">
+          Descargá el audio primero con uno de estos servicios gratuitos y luego subilo acá:<br>
+          <a href="https://snapsave.app" target="_blank" style="color:#2563eb; font-weight:600;">SnapSave.app</a>
+          &nbsp;·&nbsp;
+          <a href="https://yt1s.com" target="_blank" style="color:#2563eb; font-weight:600;">yt1s.com</a>
+          &nbsp;·&nbsp;
+          <a href="https://mp3youtube.cc" target="_blank" style="color:#2563eb; font-weight:600;">mp3youtube.cc</a>
+        </div>
+      </div>
     </div>
 
     <div id="fileList" class="file-list" style="margin-top:1rem;"></div>
