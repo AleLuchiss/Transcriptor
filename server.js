@@ -8,7 +8,6 @@ const express = require("express");
 const multer = require("multer");
 const path = require("path");
 const fs = require("fs");
-const https = require("https");
 const Groq = require("groq-sdk");
 
 const app = express();
@@ -24,10 +23,10 @@ const uploadsDir = path.join(__dirname, "uploads");
 if (!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir);
 
 const ALLOWED_TYPES = [
-  "audio/mpeg","audio/mp3","audio/wav","audio/x-wav",
-  "audio/mp4","audio/m4a","audio/x-m4a","audio/ogg",
-  "audio/flac","audio/webm","video/mp4","video/webm",
-  "video/ogg","video/quicktime","video/x-msvideo","video/mpeg",
+  "audio/mpeg", "audio/mp3", "audio/wav", "audio/x-wav",
+  "audio/mp4", "audio/m4a", "audio/x-m4a", "audio/ogg",
+  "audio/flac", "audio/webm", "video/mp4", "video/webm",
+  "video/ogg", "video/quicktime", "video/x-msvideo", "video/mpeg",
 ];
 
 const storage = multer.diskStorage({
@@ -44,7 +43,7 @@ const upload = multer({
   fileFilter: (req, file, cb) => {
     if (ALLOWED_TYPES.includes(file.mimetype)) return cb(null, true);
     const ext = path.extname(file.originalname).toLowerCase();
-    const validExts = [".mp3",".mp4",".wav",".m4a",".ogg",".flac",".webm",".mov",".avi",".mpeg"];
+    const validExts = [".mp3", ".mp4", ".wav", ".m4a", ".ogg", ".flac", ".webm", ".mov", ".avi", ".mpeg"];
     if (validExts.includes(ext)) return cb(null, true);
     cb(new Error("Formato no soportado: " + (file.mimetype || ext)));
   },
@@ -88,15 +87,11 @@ async function transcribeFile(filePath, lang) {
   return response || "";
 }
 
-// ── Descargar audio via ytdl-core ─────────────────────────────
 async function downloadYoutubeAudio(url, outputPath) {
   const ytdl = require("@distube/ytdl-core");
   return new Promise((resolve, reject) => {
     try {
-      const stream = ytdl(url, {
-        filter: "audioonly",
-        quality: "lowestaudio",
-      });
+      const stream = ytdl(url, { filter: "audioonly", quality: "lowestaudio" });
       const file = fs.createWriteStream(outputPath);
       stream.pipe(file);
       stream.on("error", (err) => reject(new Error("Error al descargar: " + err.message)));
@@ -108,9 +103,7 @@ async function downloadYoutubeAudio(url, outputPath) {
   });
 }
 
-// ══════════════════════════════════════════════════════════════
-//  POST /api/transcribe — archivo
-// ══════════════════════════════════════════════════════════════
+// ── POST /api/transcribe — archivo ────────────────────────────
 app.post("/api/transcribe", upload.single("file"), async (req, res) => {
   const filePath = req.file?.path;
   try {
@@ -122,8 +115,15 @@ app.post("/api/transcribe", upload.single("file"), async (req, res) => {
     console.log("[ARCHIVO]", req.file.originalname);
     const rawTranscript = await transcribeFile(filePath, lang);
     if (!rawTranscript.trim()) { cleanup(filePath); return res.status(422).json({ error: "No se detectó voz en el archivo." }); }
-    if (opts.length === 1 && opts[0] === "transcripcion") { cleanup(filePath); return res.json({ result: rawTranscript.trim(), words: rawTranscript.trim().split(/\s+/).length }); }
-    const gptResponse = await groq.chat.completions.create({ model: "llama-3.3-70b-versatile", messages: [{ role: "user", content: buildPostPrompt(rawTranscript, opts, lang, spk) }], max_tokens: 2000, temperature: 0.3 });
+    if (opts.length === 1 && opts[0] === "transcripcion") {
+      cleanup(filePath);
+      return res.json({ result: rawTranscript.trim(), words: rawTranscript.trim().split(/\s+/).length });
+    }
+    const gptResponse = await groq.chat.completions.create({
+      model: "llama-3.3-70b-versatile",
+      messages: [{ role: "user", content: buildPostPrompt(rawTranscript, opts, lang, spk) }],
+      max_tokens: 2000, temperature: 0.3,
+    });
     const processed = gptResponse.choices[0]?.message?.content || rawTranscript;
     cleanup(filePath);
     return res.json({ result: processed.trim(), rawTranscript: rawTranscript.trim(), words: processed.trim().split(/\s+/).length });
@@ -136,25 +136,32 @@ app.post("/api/transcribe", upload.single("file"), async (req, res) => {
   }
 });
 
-// ══════════════════════════════════════════════════════════════
-//  POST /api/transcribe-url — YouTube/TikTok/Instagram
-// ══════════════════════════════════════════════════════════════
+// ── POST /api/transcribe-url — YouTube/TikTok/Instagram ───────
 app.post("/api/transcribe-url", async (req, res) => {
   const { url, outputTypes, language, speakers } = req.body;
   const audioPath = path.join(uploadsDir, "url-" + Date.now() + ".mp4");
   try {
-    if (!url || !isSocialUrl(url)) return res.status(400).json({ error: "URL no válida. Soportamos YouTube, TikTok, Instagram, X y Facebook." });
+    if (!url || !isSocialUrl(url)) {
+      return res.status(400).json({ error: "URL no válida. Soportamos YouTube, TikTok, Instagram, X y Facebook." });
+    }
     const opts = outputTypes || ["transcripcion"];
     const lang = language || "español";
     const spk = speakers || "1";
     console.log("[URL] Descargando:", url);
     await downloadYoutubeAudio(url, audioPath);
-    if (!fs.existsSync(audioPath)) return res.status(422).json({ error: "No se pudo extraer el audio del video." });
+    if (!fs.existsSync(audioPath)) return res.status(422).json({ error: "No se pudo extraer el audio." });
     console.log("[URL] Transcribiendo...");
     const rawTranscript = await transcribeFile(audioPath, lang);
     if (!rawTranscript.trim()) { cleanup(audioPath); return res.status(422).json({ error: "No se detectó voz en el video." }); }
-    if (opts.length === 1 && opts[0] === "transcripcion") { cleanup(audioPath); return res.json({ result: rawTranscript.trim(), words: rawTranscript.trim().split(/\s+/).length }); }
-    const gptResponse = await groq.chat.completions.create({ model: "llama-3.3-70b-versatile", messages: [{ role: "user", content: buildPostPrompt(rawTranscript, opts, lang, spk) }], max_tokens: 2000, temperature: 0.3 });
+    if (opts.length === 1 && opts[0] === "transcripcion") {
+      cleanup(audioPath);
+      return res.json({ result: rawTranscript.trim(), words: rawTranscript.trim().split(/\s+/).length });
+    }
+    const gptResponse = await groq.chat.completions.create({
+      model: "llama-3.3-70b-versatile",
+      messages: [{ role: "user", content: buildPostPrompt(rawTranscript, opts, lang, spk) }],
+      max_tokens: 2000, temperature: 0.3,
+    });
     const processed = gptResponse.choices[0]?.message?.content || rawTranscript;
     cleanup(audioPath);
     return res.json({ result: processed.trim(), rawTranscript: rawTranscript.trim(), words: processed.trim().split(/\s+/).length });
